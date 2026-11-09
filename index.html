@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+
+<html lang="en-us">
+<head>
+<meta charset="utf-8"/>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no"/>
+<title>TABS</title>
+<link rel="stylesheet" href="TemplateData/style.css"/>
+<script src="TemplateData/gamepush-unity.js"></script>
+<script>
+    const showPreloaderAd = "true";
+    const overlayBackgroundColor = "";
+    const progressBarFillColor = "";
+    const progressBarBackgroundColor = "";
+    const progressBarBorderColor = "";
+
+    const autocallGameReady = "";
+  </script>
+<script>
+    // Local, offline stand-in for the GamePush portal SDK (leaderboards, ads,
+    // social, achievements...). Every call resolves/no-ops locally instead of
+    // reaching out to gamepush.com / eponesh.com / yandex.*, so the game runs
+    // fully self-hosted without any network calls to those services.
+    (() => {
+      const noop = () => {};
+      const emitter = (extra = {}) => Object.assign({ on: noop }, extra);
+      const listApi = (extra = {}) => emitter(Object.assign({
+        open: () => Promise.resolve(),
+        fetch: () => Promise.resolve({ players: [], items: [], canLoadMore: false, achievements: [], achievementsGroups: [], playerAchievements: [] }),
+      }, extra));
+      // Any nested property/method under channels/files/etc. that isn't
+      // explicitly defined below just becomes a no-op returning a resolved promise.
+      const autoStub = () => new Proxy(() => Promise.resolve({}), {
+        get: (target, prop) => prop === "on" ? noop : autoStub(),
+        apply: () => Promise.resolve({}),
+      });
+
+      window.__gpMock = {
+        on: noop,
+        player: emitter({
+          id: 1, score: 0, name: "Player", avatar: "",
+          ready: Promise.resolve(),
+          isLoggedIn: false, hasAnyCredentials: false, isStub: true, fields: [],
+          get: () => null, set: noop, add: noop, has: () => false, toggle: noop,
+          getFieldName: () => "", getFieldVariantName: () => "", getField: () => ({ variants: [] }),
+          reset: noop, remove: noop,
+          sync: () => Promise.resolve(), load: () => Promise.resolve(),
+          login: () => Promise.resolve(), fetchFields: noop,
+        }),
+        leaderboard: listApi({
+          openScoped: () => Promise.resolve(),
+          fetchScoped: () => Promise.resolve({ players: [] }),
+          publishRecord: () => Promise.resolve(),
+          fetchPlayerRating: () => Promise.resolve({ player: { position: 0 } }),
+          fetchPlayerRatingScoped: () => Promise.resolve({ player: { position: 0 } }),
+        }),
+        achievements: listApi({
+          unlock: () => Promise.resolve({ success: false }),
+          setProgress: () => Promise.resolve({ success: false }),
+          has: () => false, getProgress: () => 0,
+        }),
+        gamesCollections: listApi(),
+        fullscreen: emitter({ open: noop, close: noop, toggle: noop }),
+        ads: emitter({
+          showFullscreen: () => Promise.resolve(),
+          showRewardedVideo: () => Promise.resolve(),
+          showPreloader: () => Promise.resolve(),
+          showSticky: noop, closeSticky: noop, refreshSticky: noop,
+          isAdblockEnabled: false, isStickyAvailable: false, isFullscreenAvailable: false,
+          isRewardedAvailable: false, isPreloaderAvailable: false,
+          isStickyPlaying: false, isFullscreenPlaying: false, isRewardedPlaying: false, isPreloaderPlaying: false,
+        }),
+        analytics: { hit: noop, goal: noop },
+        socials: emitter({
+          share: noop, post: noop, invite: noop, joinCommunity: noop,
+          communityLink: "", isSupportsShare: false, isSupportsNativeShare: false,
+          isSupportsNativePosts: false, isSupportsNativeInvite: false,
+          canJoinCommunity: false, isSupportsNativeCommunityJoin: false,
+        }),
+        documents: emitter({ open: noop, fetch: noop }),
+        // channels/chat API: any method/property access auto-resolves locally
+        // (Object.assign can't copy through a Proxy, so use it directly).
+        channels: autoStub(),
+        variables: { fetch: () => Promise.resolve({}), has: () => false, get: () => null },
+        players: { fetch: () => Promise.resolve({ players: [] }) },
+        files: {
+          upload: () => Promise.resolve({}), uploadUrl: () => Promise.resolve({}),
+          uploadContent: () => Promise.resolve({}), loadContent: () => Promise.resolve(""),
+          chooseFile: () => Promise.resolve({ tempUrl: "" }),
+          fetch: () => Promise.resolve({ items: [], canLoadMore: false }),
+          fetchMore: () => Promise.resolve({ items: [], canLoadMore: false }),
+        },
+        app: {
+          title: "", description: "", image: "", url: "",
+          requestReview: () => Promise.resolve({ success: false }),
+          canRequestReview: false, isAlreadyReviewed: false,
+          addShortcut: () => Promise.resolve(false), canAddShortcut: false,
+        },
+        platform: { type: "unknown", hasIntegratedAuth: false, isExternalLinksAllowed: true },
+        language: "en", avatarGenerator: "",
+        changeLanguage: noop, changeAvatarGenerator: noop,
+        loadOverlay: noop,
+        isPaused: false, pause: noop, resume: noop,
+        gameStart: noop, gameplayStart: noop, gameplayStop: noop,
+        isMobile: /iPhone|iPad|iPod|Android/i.test(navigator.userAgent),
+        serverTime: Date.now(), isDev: false, isAllowedOrigin: true,
+      };
+    })();
+  </script>
+<script>
+    var _unityAwaiter = {};
+    _unityAwaiter.ready = new Promise((resolve, reject) => {
+      _unityAwaiter.done = resolve;
+      _unityAwaiter.abort = reject;
+    });
+
+    var _gpAwaiter = {};
+    _gpAwaiter.ready = new Promise((resolve) => {
+      _gpAwaiter.done = resolve;
+    });
+
+    window.unityInstance = null;
+    window.onGPError = () => _gpAwaiter.done();
+
+    window.onGPInit = async (gp) => {
+      if (showPreloaderAd == "true" || showPreloaderAd == "1") {
+        gp.ads.showPreloader();
+      }
+
+      window.GamePush = new GamePushUnity(gp);
+      gp.player.ready.finally(_gpAwaiter.done);
+
+      await _unityAwaiter.ready;
+
+      if (autocallGameReady != null && parseFloat(autocallGameReady) > 0) {
+        setTimeout(() => gp.gameStart(), parseFloat(autocallGameReady));
+      }
+    };
+
+    // Use the local mock instead of loading the real GamePush SDK from
+    // gs.eponesh.com / s3.eponesh.com (no network call needed).
+    window.onGPInit(window.__gpMock);
+  </script>
+</head>
+<body class="dark">
+<div id="unity-container" class="unity-desktop">
+<canvas id="unity-canvas"></canvas>
+</div>
+<div id="loading-cover" style="display:none;">
+<div id="unity-loading-bar">
+<div id="unity-logo"><img src="logo.png"/></div>
+<div id="unity-progress-bar-empty" style="display: none;">
+<div id="unity-progress-bar-full"></div>
+</div>
+<div class="spinner"></div>
+</div>
+</div>
+<script>
+    const buildUrl = "Build";
+    const loaderUrl = buildUrl + "/BUILD.loader.js";
+    const config = {
+      dataUrl: buildUrl + "/eafa47a648558194ccaf31cb0c82adbd.data.unityweb",
+      frameworkUrl: buildUrl + "/6b1071ab784f3a1c586c4d9a2d8cd66f.js.unityweb",
+      codeUrl: buildUrl + "/de3fb1d8dc059fa4ea3a880a1e8baf75.wasm.unityweb",
+      streamingAssetsUrl: "StreamingAssets",
+      companyName: "VSEGON",
+      productName: "TABS",
+      productVersion: "1.0",
+    };
+
+    const container = document.querySelector("#unity-container");
+    const canvas = document.querySelector("#unity-canvas");
+    const loadingCover = document.querySelector("#loading-cover");
+    const progressBarEmpty = document.querySelector("#unity-progress-bar-empty");
+    const progressBarFull = document.querySelector("#unity-progress-bar-full");
+    const spinner = document.querySelector('.spinner');
+
+    if (overlayBackgroundColor !== "-" && overlayBackgroundColor !== " " && overlayBackgroundColor !== "")
+      canvas.style.background = overlayBackgroundColor;
+
+    if (progressBarFillColor !== "-" && progressBarFillColor !== " " && progressBarFillColor !== "")
+      progressBarFull.style.background = progressBarFillColor;
+
+    if (progressBarBackgroundColor !== "-" && progressBarBackgroundColor !== " " && progressBarBackgroundColor !== "")
+      progressBarEmpty.style.background = progressBarBackgroundColor;
+
+    if (progressBarBorderColor !== "-" && progressBarBorderColor !== " " && progressBarBorderColor !== "")
+      progressBarEmpty.style.border.color = progressBarBorderColor;
+
+
+    if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
+      container.className = "unity-mobile";
+    }
+
+    loadingCover.style.display = "";
+
+    const unityLoader = document.createElement("script");
+    unityLoader.src = loaderUrl;
+    unityLoader.onload = async () => {
+      await _gpAwaiter.ready;
+      createUnityInstance(canvas, config, (progress) => {
+        spinner.style.display = "none";
+        progressBarEmpty.style.display = "";
+        progressBarFull.style.width = `${100 * progress}%`;
+      }).then((unityInstance) => {
+        window.unityInstance = unityInstance;
+        _unityAwaiter.done(unityInstance);
+        loadingCover.style.display = "none";
+      }).catch((message) => {
+        _unityAwaiter.abort(message);
+        alert(message);
+      });
+    };
+    document.body.appendChild(unityLoader);
+
+    document.addEventListener("pointerdown", () => {
+      container.focus();
+      window.focus();
+      canvas.focus();
+    });
+
+  </script>
+<script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/vce701823e78c4301a35b7e07294d87301792088814092" integrity="sha512-UKNk8GbxkABxKcXYuLkO16EleLGUkcvJWtpSNmExE0Too3ZaFAxTscNWEc1OdAv5/BikHawapSCaiD2XCmp+Bw==" data-cf-beacon='{"version":"2024.11.0","token":"466cade843754106bbf20c4f18f202b6","r":1,"spa":2}' crossorigin="anonymous"></script>
+</body>
+</html>
